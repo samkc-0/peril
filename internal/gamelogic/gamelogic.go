@@ -82,9 +82,9 @@ func (gs *GameState) CommandStatus() {
 	}
 	fmt.Println("The game is not paused.")
 	p := gs.GetPlayerSnap()
-	fmt.Printf("You are %s, and you have %d units.\n", p.Name, len(p.Units))
+	fmt.Printf("You are %s, and you have %d units.\n", p.Username, len(p.Units))
 	for _, unit := range p.Units {
-		fmt.Printf("* %v: %v, %v\n", unit.Name, unit.Location, unit.Rank)
+		fmt.Printf("* %v: %v, %v\n", unit.ID, unit.Location, unit.Rank)
 	}
 }
 

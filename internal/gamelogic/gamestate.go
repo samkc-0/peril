@@ -7,7 +7,7 @@ import (
 type GameState struct {
 	Player Player
 	Paused bool
-	mu     *sync.RWMutext
+	mu     *sync.RWMutex
 }
 
 func NewGameState(username string) *GameState {
@@ -30,7 +30,7 @@ func (gs *GameState) pauseGame() {
 	gs.Paused = true
 }
 
-func (gs *GameState) isPaused() bool {
+func (gs *GameState) IsPaused() bool {
 	gs.mu.RLock()
 	defer gs.mu.RUnlock()
 	return gs.Paused
