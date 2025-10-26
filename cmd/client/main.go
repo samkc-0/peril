@@ -59,6 +59,8 @@ func main() {
 			gamelogic.PrintClientHelp()
 		case gamelogic.CmdClientSpam:
 			fmt.Println("Spamming not allowed yet!")
+		case "exit":
+			fallthrough
 		case gamelogic.CmdClientQuit:
 			gamelogic.PrintQuit()
 			return
