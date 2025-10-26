@@ -25,7 +25,13 @@ func main() {
 	}
 	fmt.Println("Connected to RabbitMQ")
 
-	_, _, err = pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug+".*", pubsub.DurableQueueType)
+	_, _, err = pubsub.DeclareAndBind(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		routing.GameLogSlug+".*",
+		pubsub.DurableQueueType,
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,7 +63,7 @@ func main() {
 				channel,
 				routing.ExchangePerilDirect,
 				routing.PauseKey,
-				routing.PlayingState{IsPaused: true},
+				routing.PlayingState{IsPaused: false},
 			); err != nil {
 				fmt.Printf("FAILED:\n%v\n", err)
 			}

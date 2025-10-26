@@ -37,6 +37,17 @@ func main() {
 	fmt.Println("Starting Peril client...")
 
 	gameState := gamelogic.NewGameState(username)
+
+	if err := pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilDirect,
+		routing.PauseKey+"."+username,
+		routing.PauseKey,
+		pubsub.TransientQueueType,
+		handlerPause(gameState),
+	); err != nil {
+		fmt.Println(err)
+	}
 	for {
 		words := gamelogic.GetInput()
 		if words == nil || len(words) == 0 {
