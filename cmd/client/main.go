@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
 	"peril/internal/gamelogic"
 	"peril/internal/pubsub"
 	"peril/internal/routing"
@@ -24,7 +22,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	channel, queue, err := pubsub.DeclareAndBind(
+	_, _, err = pubsub.DeclareAndBind(
 		conn,
 		routing.ExchangePerilDirect,
 		routing.PauseKey+"."+username,
@@ -38,8 +36,34 @@ func main() {
 
 	fmt.Println("Starting Peril client...")
 
-	fmt.Println("Press Ctrl+C to exit...")
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt)
-	<-sig
+	gameState := gamelogic.NewGameState(username)
+	for {
+		words := gamelogic.GetInput()
+		if words == nil || len(words) == 0 {
+			continue
+		}
+		switch words[0] {
+		case gamelogic.CmdClientSpawn:
+			if err := gameState.CommandSpawn(words); err != nil {
+				fmt.Println(err)
+			}
+		case gamelogic.CmdClientMove:
+			if _, err := gameState.CommandMove(words); err != nil {
+				fmt.Println(err)
+				continue
+			}
+			fmt.Println("moved units successfully")
+		case gamelogic.CmdClientStatus:
+			gameState.CommandStatus()
+		case gamelogic.CmdClientHelp:
+			gamelogic.PrintClientHelp()
+		case gamelogic.CmdClientSpam:
+			fmt.Println("Spamming not allowed yet!")
+		case gamelogic.CmdClientQuit:
+			gamelogic.PrintQuit()
+			return
+		default:
+			fmt.Printf("Error: invalid command '%s'\n", words[0])
+		}
+	}
 }

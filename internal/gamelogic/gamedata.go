@@ -50,3 +50,17 @@ func getAllLocations() map[Location]struct{} {
 		"antarctica": {},
 	}
 }
+
+func ValidateRank(r string) (UnitRank, bool) {
+	if _, valid := getAllRanks()[UnitRank(r)]; !valid {
+		return "", false
+	}
+	return UnitRank(r), true
+}
+
+func ValidateLocation(loc string) (Location, bool) {
+	if _, valid := getAllLocations()[Location(loc)]; !valid {
+		return "", false
+	}
+	return Location(loc), true
+}

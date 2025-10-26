@@ -40,12 +40,10 @@ func ClientWelcome() (string, error) {
 }
 
 func PrintServerHelp() {
-	const help = `Possible commands:
-	* pause
-	* resume
-	* quit
-	* help`
-	fmt.Println(help)
+	fmt.Println("Possible commands:")
+	for cmd := range getAllServerCommands() {
+		fmt.Printf("* %s\n", cmd)
+	}
 }
 
 func GetInput() []string {

@@ -3,8 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
+	"peril/internal/gamelogic"
 	"peril/internal/pubsub"
 	"peril/internal/routing"
 
@@ -31,11 +30,43 @@ func main() {
 	fmt.Println("Connected to RabbitMQ")
 
 	fmt.Println("Starting Peril server...")
+	gamelogic.PrintServerHelp()
 
-	// Ctrl (or Cmd) + C to exit
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt)
-	fmt.Println("Press ^C to exit")
-	<-sigs
-	fmt.Println("Shutting down Peril server...")
+	for {
+		words := gamelogic.GetInput()
+		if words == nil || len(words) == 0 {
+			continue
+		}
+		if words[0] == gamelogic.CmdServerPause {
+			fmt.Println("Sending pause command...")
+			if err := pubsub.PublishJSON(
+				channel,
+				routing.ExchangePerilDirect,
+				routing.PauseKey,
+				routing.PlayingState{IsPaused: true},
+			); err != nil {
+				fmt.Printf("FAILED:\n%v\n", err)
+			}
+
+		} else if words[0] == gamelogic.CmdServerResume {
+			fmt.Println("Sending resume command...")
+
+			if err := pubsub.PublishJSON(
+				channel,
+				routing.ExchangePerilDirect,
+				routing.PauseKey,
+				routing.PlayingState{IsPaused: true},
+			); err != nil {
+				fmt.Printf("FAILED:\n%v\n", err)
+			}
+
+		} else if words[0] == gamelogic.CmdServerQuit {
+			fmt.Println("Goodbye!")
+			break
+		} else if words[0] == gamelogic.CmdServerHelp {
+			gamelogic.PrintServerHelp()
+		} else {
+			fmt.Printf("unknown command: %s\n", words[0])
+		}
+	}
 }

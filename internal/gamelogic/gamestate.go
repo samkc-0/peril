@@ -63,7 +63,7 @@ func (gs *GameState) GetUsername() string {
 }
 
 func (gs *GameState) getUnitsSnap() []Unit {
-	gs.mu.Lock()
+	gs.mu.RLock()
 	defer gs.mu.RUnlock()
 	units := []Unit{}
 	for _, unit := range gs.Player.Units {
