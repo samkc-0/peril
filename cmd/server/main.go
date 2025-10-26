@@ -23,10 +23,6 @@ func main() {
 		log.Fatalf("failed to create a channel:\n%v\n", err)
 	}
 
-	if err = pubsub.PublishJSON(channel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true}); err != nil {
-		fmt.Printf("failed to publish json:\n%v\n", err)
-	}
-
 	fmt.Println("Connected to RabbitMQ")
 
 	fmt.Println("Starting Peril server...")
