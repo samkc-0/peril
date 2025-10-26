@@ -36,6 +36,15 @@ func PublishJSON[T any](ch *amqp091.Channel, exchange string, key string, val T)
 	return nil
 }
 
+func SubscribeJSON[T any](
+	conn *amqp091.Connection,
+	exchange, queueName, key string,
+	queueType SimpleQueueType,
+	handler func(T),
+) error {
+	return nil
+}
+
 func DeclareAndBind(
 	conn *amqp091.Connection,
 	exchange, queueName, key string,
