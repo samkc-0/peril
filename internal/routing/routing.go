@@ -1,7 +1,7 @@
 package routing
 
 const (
-	ArmyMovesPreix       = "army_moves"
+	ArmyMovesPrefix      = "army_moves"
 	WarRecognitionPrefix = "war"
 	PauseKey             = "pause"
 	GameLogSlug          = "game_logs"

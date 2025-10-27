@@ -22,14 +22,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	_, _, err = pubsub.DeclareAndBind(
-		conn,
-		routing.ExchangePerilDirect,
-		routing.PauseKey+"."+username,
-		routing.PauseKey,
-		pubsub.TransientQueueType,
-	)
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -38,6 +30,7 @@ func main() {
 
 	gameState := gamelogic.NewGameState(username)
 
+	// subscribe to pause events
 	if err := pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilDirect,
@@ -48,6 +41,62 @@ func main() {
 	); err != nil {
 		fmt.Println(err)
 	}
+
+	// subscribe to other players' move events
+	if err := pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.ArmyMovesPrefix+"."+username,
+		routing.ArmyMovesPrefix+".*",
+		pubsub.TransientQueueType,
+		func(move gamelogic.ArmyMove) pubsub.AckType {
+			defer fmt.Print("> ")
+			switch gameState.HandleMove(move) {
+			case gamelogic.MoveOutcomeSafe:
+				fallthrough
+			case gamelogic.MoveOutcomeMakeWar:
+				ch, err := conn.Channel()
+				defer ch.Close()
+				if err != nil {
+					fmt.Println(err)
+				}
+				if err := pubsub.PublishJSON(
+					ch,
+					routing.ExchangePerilTopic,
+					routing.WarRecognitionPrefix+"."+username,
+					move,
+				); err != nil {
+					fmt.Println(err)
+				}
+				return pubsub.NackRequeue
+			case gamelogic.MoveOutcomeSamePlayer:
+				fallthrough
+			default:
+				return pubsub.NackDiscard
+			}
+		},
+	); err != nil {
+		fmt.Println(err)
+	}
+
+	// subscribe to all war outcomes
+	if err := pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilDirect,
+		routing.WarRecognitionPrefix,
+		routing.WarRecognitionPrefix+".*",
+		pubsub.DurableQueueType,
+		handlerWar(gameState),
+	); err != nil {
+		fmt.Println(err)
+	}
+
+	moveChan, err := conn.Channel()
+	if err != nil {
+		fmt.Println("error creating channel:")
+		log.Fatal(err)
+	}
+
 	for {
 		words := gamelogic.GetInput()
 		if words == nil || len(words) == 0 {
@@ -59,8 +108,18 @@ func main() {
 				fmt.Println(err)
 			}
 		case gamelogic.CmdClientMove:
-			if _, err := gameState.CommandMove(words); err != nil {
+			move, err := gameState.CommandMove(words)
+			if err != nil {
 				fmt.Println(err)
+				continue
+			}
+			if err := pubsub.PublishJSON(
+				moveChan,
+				routing.ExchangePerilTopic,
+				routing.ArmyMovesPrefix+"."+username,
+				move,
+			); err != nil {
+				fmt.Printf("publishing move failed: %s\n", err)
 				continue
 			}
 			fmt.Println("moved units successfully")
