@@ -25,12 +25,20 @@ func main() {
 	}
 	fmt.Println("Connected to RabbitMQ")
 
-	_, _, err = pubsub.DeclareAndBind(
+	err = pubsub.SubscribeGob(
 		conn,
-		routing.ExchangePerilTopic,
+		string(routing.ExchangePerilTopic),
 		routing.GameLogSlug,
 		routing.GameLogSlug+".*",
 		pubsub.DurableQueueType,
+		func(gl routing.GameLog) pubsub.AckType {
+			defer fmt.Print("> ")
+			if err := gamelogic.WriteLog(gl); err != nil {
+				fmt.Println(err)
+				return pubsub.NackDiscard
+			}
+			return pubsub.Ack
+		},
 	)
 	if err != nil {
 		log.Fatal(err)

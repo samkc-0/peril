@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"fmt"
 	"peril/internal/routing"
 	"time"
 
@@ -23,7 +24,7 @@ func decodeGob[T any](data []byte) (T, error) {
 	buffer := bytes.NewBuffer(data)
 	decoder := gob.NewDecoder(buffer)
 	var result T
-	if err := decoder.Decode(result); err != nil {
+	if err := decoder.Decode(&result); err != nil {
 		return result, err
 	}
 	return result, nil
@@ -46,6 +47,42 @@ func PublishGob[T any](ch *amqp.Channel, exchange string, key string, val T) err
 	); err != nil {
 		return err
 	}
+	return nil
+}
+
+func SubscribeGob[T any](
+	conn *amqp.Connection,
+	exchange, queueName, key string,
+	queueType SimpleQueueType,
+	handler func(T) AckType,
+) error {
+	ch, _, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
+	if err != nil {
+		return err
+	}
+	deliveries, err := ch.Consume(queueName, "", false, false, false, false, nil)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for delivery := range deliveries {
+			if msg, err := decodeGob[T](delivery.Body); err == nil {
+				switch handler(msg) {
+				case Ack:
+					delivery.Ack(false)
+				case NackRequeue:
+					delivery.Nack(false, true)
+				case NackDiscard:
+					delivery.Nack(false, false)
+				default:
+					delivery.Nack(false, false)
+				}
+			} else {
+				fmt.Println(err)
+			}
+		}
+	}()
 	return nil
 }
 
