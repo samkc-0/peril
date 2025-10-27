@@ -6,6 +6,7 @@ import (
 	"peril/internal/gamelogic"
 	"peril/internal/pubsub"
 	"peril/internal/routing"
+	"strconv"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -103,7 +104,23 @@ func main() {
 		case gamelogic.CmdClientHelp:
 			gamelogic.PrintClientHelp()
 		case gamelogic.CmdClientSpam:
-			fmt.Println("Spamming not allowed yet!")
+			if len(words) < 2 {
+				fmt.Println("insufficient spam args, want %d, got %s", 2, len(words))
+				continue
+			}
+			num_times, err := strconv.Atoi(words[1])
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			for i := 0; i < num_times; i++ {
+				msg := gamelogic.GetMaliciousLog()
+				err := pubsub.PublishGameLog(publishCh, msg, username)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+			}
 		case "exit":
 			fallthrough
 		case gamelogic.CmdClientQuit:

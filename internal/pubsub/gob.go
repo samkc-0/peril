@@ -60,6 +60,7 @@ func SubscribeGob[T any](
 	if err != nil {
 		return err
 	}
+	ch.Qos(10, 0, true)
 	deliveries, err := ch.Consume(queueName, "", false, false, false, false, nil)
 	if err != nil {
 		return err
