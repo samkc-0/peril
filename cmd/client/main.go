@@ -26,11 +26,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Starting Peril client...")
-
 	gameState := gamelogic.NewGameState(username)
 
-	// subscribe to pause events
+	fmt.Println("subscribing to pause events")
 	if err := pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilDirect,
@@ -42,48 +40,30 @@ func main() {
 		fmt.Println(err)
 	}
 
-	// subscribe to other players' move events
+	fmt.Println("subscribing to move events")
+
+	publishCh, err := conn.Channel()
+	if err != nil {
+		fmt.Println("error creating channel:")
+		log.Fatal(err)
+	}
+
 	if err := pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilTopic,
 		routing.ArmyMovesPrefix+"."+username,
 		routing.ArmyMovesPrefix+".*",
 		pubsub.TransientQueueType,
-		func(move gamelogic.ArmyMove) pubsub.AckType {
-			defer fmt.Print("> ")
-			switch gameState.HandleMove(move) {
-			case gamelogic.MoveOutcomeSafe:
-				fallthrough
-			case gamelogic.MoveOutcomeMakeWar:
-				ch, err := conn.Channel()
-				defer ch.Close()
-				if err != nil {
-					fmt.Println(err)
-				}
-				if err := pubsub.PublishJSON(
-					ch,
-					routing.ExchangePerilTopic,
-					routing.WarRecognitionPrefix+"."+username,
-					move,
-				); err != nil {
-					fmt.Println(err)
-				}
-				return pubsub.NackRequeue
-			case gamelogic.MoveOutcomeSamePlayer:
-				fallthrough
-			default:
-				return pubsub.NackDiscard
-			}
-		},
+		handlerMove(gameState, publishCh),
 	); err != nil {
 		fmt.Println(err)
 	}
 
-	// subscribe to all war outcomes
+	fmt.Println("subscribing to war outcomes")
 	if err := pubsub.SubscribeJSON(
 		conn,
-		routing.ExchangePerilDirect,
-		routing.WarRecognitionPrefix,
+		routing.ExchangePerilTopic,
+		"war",
 		routing.WarRecognitionPrefix+".*",
 		pubsub.DurableQueueType,
 		handlerWar(gameState),
@@ -91,12 +71,7 @@ func main() {
 		fmt.Println(err)
 	}
 
-	moveChan, err := conn.Channel()
-	if err != nil {
-		fmt.Println("error creating channel:")
-		log.Fatal(err)
-	}
-
+	fmt.Println("entering REPL")
 	for {
 		words := gamelogic.GetInput()
 		if words == nil || len(words) == 0 {
@@ -114,7 +89,7 @@ func main() {
 				continue
 			}
 			if err := pubsub.PublishJSON(
-				moveChan,
+				publishCh,
 				routing.ExchangePerilTopic,
 				routing.ArmyMovesPrefix+"."+username,
 				move,
